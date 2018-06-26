@@ -5,7 +5,7 @@ import json
 import time
 
 #List of instaces (IP address)
-HOST_LIST = ['10.203.16.50']
+HOST_LIST = []
 
 #flag for point if intanse is using loadstash version 5 or 6
 IS_VERSION_FIVE = False
