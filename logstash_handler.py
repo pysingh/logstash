@@ -1,14 +1,31 @@
 # -*- coding: utf-8 -*-
 
 import urllib.request
+import os
+
 import json
 import time
+import boto3
 
-#List of instaces (IP address)
 HOST_LIST = []
-
-#flag for point if intanse is using loadstash version 5 or 6
 IS_VERSION_FIVE = False
+#flag for point if intanse is using loadstash version 5 or 6
+
+AWS_ACCESS_KEY = os.environ['AWS_ACCESS_KEY']
+AWS_SECRET_KEY = os.environ['AWS_SECRET_KEY']
+
+TAG_NAME = ''
+TAG_VALUES = []
+
+def get_host_address():
+    # Fetching list of IP Addresses associate with Tag Name and Value
+    ec2client = boto3.client('ec2','us-east-2', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
+    response = ec2client.describe_instances(Filters=[{'Name' : 'tag:{0}'.format(TAG_NAME),'Values' : TAG_VALUES}])
+    for reservation in response['Reservations']:
+        for instance in reservation['Instances']:
+            # Appending IP in host list array
+            HOST_LIST.append(instance['PrivateIpAddress'])
+
 
 def get_response(url):
     '''
@@ -86,25 +103,29 @@ def get_pipeline_stats(host, end_point):
     format_jvm_stats(response['pipeline']['events']['queue_push_duration_in_millis'], 'logstash.events.queue_push_duration_in_millis', host)
 
 
-for host in HOST_LIST:
-    '''
-        Interating over the IP addresses
-    '''
-    try:
-        get_jvm_stats(host, '/_node/stats/jvm?pretty')
-    except Exception as e:
-        pass
-    try:
-        get_process_stats(host, '/_node/stats/process?pretty')
-    except Exception as e:
-        pass
-    if IS_VERSION_FIVE:
+def lambda_handler(event, context):
+    # getting list of host available with tags and values
+    get_host_address()
+
+    for host in HOST_LIST:
+        '''
+            Interating over the IP addresses
+        '''
         try:
-            get_process_stats(host, '/_node/stats/pipeline?pretty')
+            get_jvm_stats(host, '/_node/stats/jvm?pretty')
         except Exception as e:
             pass
-    else:
         try:
-            get_process_stats(host, '/_node/stats/events?pretty')
+            get_process_stats(host, '/_node/stats/process?pretty')
         except Exception as e:
             pass
+        if IS_VERSION_FIVE:
+            try:
+                get_process_stats(host, '/_node/stats/pipeline?pretty')
+            except Exception as e:
+                pass
+        else:
+            try:
+                get_event_stats(host, '/_node/stats/events?pretty')
+            except Exception as e:
+                pass
