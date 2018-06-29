@@ -11,13 +11,11 @@ HOST_LIST = []
 IS_VERSION_FIVE = False
 #flag for point if intanse is using loadstash version 5 or 6
 
-AWS_ACCESS_KEY = os.environ['AWS_ACCESS_KEY']
-AWS_SECRET_KEY = os.environ['AWS_SECRET_KEY']
 
 TAG_NAME = ''
 TAG_VALUES = []
 
-def get_host_address():
+def get_host_address(AWS_ACCESS_KEY, AWS_SECRET_KEY):
     # Fetching list of IP Addresses associate with Tag Name and Value
     ec2client = boto3.client('ec2','us-east-2', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
     response = ec2client.describe_instances(Filters=[{'Name' : 'tag:{0}'.format(TAG_NAME),'Values' : TAG_VALUES}])
@@ -37,6 +35,7 @@ def get_response(url):
     return json.loads(r.decode('utf-8'))
 
 def set_logstash_version(version):
+    global IS_VERSION_FIVE
     if '5.6'in version:
         IS_VERSION_FIVE = True
     else:
@@ -105,7 +104,10 @@ def get_pipeline_stats(host, end_point):
 
 def lambda_handler(event, context):
     # getting list of host available with tags and values
-    get_host_address()
+    AWS_ACCESS_KEY = event.get('AWS_ACCESS_KEY')
+    AWS_SECRET_KEY = event.get('AWS_SECRET_KEY')
+
+    get_host_address(AWS_ACCESS_KEY, AWS_SECRET_KEY)
 
     for host in HOST_LIST:
         '''
